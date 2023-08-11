@@ -1,6 +1,14 @@
 package com.airway.demo.service;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import javax.persistence.criteria.Predicate;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -89,6 +97,49 @@ public class FlightService {
     Airport existingDestinationAirport = airportService.getExistingAirportByCode(flight.getDestinationAirport().getCode());
     if (existingDestinationAirport != null) {
       flight.setDestinationAirport(existingDestinationAirport); // Use the existing airport entity
+    }
+  }
+
+  public ResponseEntity<CustomResponseBody<List<FlightDTO>>> getFlights(
+  String airline,
+  String sourceAirport,
+  String destinationAirport,
+  LocalDateTime dateTime) {
+    try {
+      Specification<Flight> spec = (root, query, cb) -> {
+        List<Predicate> predicates = new ArrayList<>();
+
+        if (airline != null) {
+          predicates.add(cb.equal(root.get("airline").get("code"), airline));
+        }
+
+        if (sourceAirport != null) {
+          predicates.add(cb.equal(root.get("sourceAirport").get("code"), sourceAirport));
+        }
+
+        if (destinationAirport != null) {
+          predicates.add(cb.equal(root.get("destinationAirport").get("code"), destinationAirport));
+        }
+
+        if (dateTime != null) {
+          predicates.add(cb.equal(root.get("dateTime"), dateTime));
+        }
+
+        return cb.and(predicates.toArray(new Predicate[0]));
+      };
+
+      List<Flight> flights = flightRepository.findAll(spec);
+
+      List<FlightDTO> flightsDto = flights.stream().map(filght -> mapper.map(filght, FlightDTO.class)).collect(Collectors.toList());
+
+      return new ResponseEntity<>(
+      new CustomResponseBody<>(flightsDto, HttpStatus.OK.toString()),
+      HttpStatus.OK);
+    } catch (Exception e) {
+      return new ResponseEntity<>(
+      new CustomResponseBody<>(null, HttpStatus.INTERNAL_SERVER_ERROR.toString(), e
+      .getMessage()),
+      HttpStatus.INTERNAL_SERVER_ERROR);
     }
   }
 
