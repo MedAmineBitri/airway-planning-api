@@ -7,4 +7,5 @@ import com.airway.demo.entity.Airline;
 
 @Repository
 public interface AirlineRepository extends JpaRepository<Airline, String> {
+  Airline findByCode(String code);
 }
